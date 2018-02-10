@@ -10,11 +10,12 @@ app.get('/',function(req,res){
                     return next(err);
                 var $ = cheerio.load(sres.text);
                 var items = [];
-                $('#topic_list .topic_title').each(function(idx,element){
-                    var $element = $(element);
+                $('#topic_list .cell').each(function(idx,element){
+                    var $cell = $(element);
                     items.push({
-                        title: $element.attr('title'),
-                        href: $element.attr('href')
+                        title: $cell.find('.topic_title').attr('title'),
+                        href: $cell.find('.topic_title').attr('href'),
+                        author:$cell.find('img').attr('title')
                     });
                 });
                 res.send(items);
