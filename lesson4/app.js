@@ -39,7 +39,7 @@ superagent.get('https://cnodejs.org/')
                 if(q>=most) break;
                 superagent.get(topic_url[i])
                     .end(function(err,res){
-                        console.log('访问：'+topic_url[i]);
+                        //console.log('访问：'+topic_url[i]);
                         ep.emit('topic_html',[topic_url[i],res.text]);
                     });
             }
