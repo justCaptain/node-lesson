@@ -1,3 +1,17 @@
+/**
+ * 
+ *  实现: 总是有5个请求（任何时候都在抓5个页面）
+ *  API:  ep.tail(task,backcall)   
+ *  描述: 只要触发task事件,就执行回调
+ *  实现思路：
+ *      1、先用递归执行发送5个并发请求
+ *      2、只要抓到页面，就触发回调
+ *      3、在回调中再抓一次页面，回调再触发这个事件
+ *      4、用计数控制好递归调用的次数；
+ *  
+ *  
+ */
+
 var eventproxy = require('eventproxy');
 var cheerio = require('cheerio');
 var superagent = require('superagent');
@@ -16,34 +30,35 @@ superagent.get('https://cnodejs.org/')
             topic_url.push(href);
         });
 
-        var most = 5;
-        function loop(start){
-            var ep = new eventproxy();
-            ep.after('topic_html',most,function(topics){
-                topics = topics.map(function(topicPair){
-                    var topicUrl = topicPair[0];
-                    var topicHtml = topicPair[1];
-                    var $ = cheerio.load(topicHtml);
-                    return ({
-                        title:$('.topic_full_title').text().trim(),
-                        href:topicUrl,
-                        comment1:$('.reply_content').eq(0).text().trim(),
-                        author:$('.user_name .dark').text().trim()
-                    });
-                });
-                console.log(topics);
-                loop(start+most);
+        var ep = new eventproxy();
+        var count = 5;
+        ep.tail('updata',function(topicPair){
+            var topicUrl = topicPair[0];
+            var topicHtml = topicPair[1];
+            var $ = cheerio.load(topicHtml);
+            console.log({
+                title:$('.topic_full_title').text().trim(),
+                href:topicUrl,
+                comment1:$('.reply_content').eq(0).text().trim(),
+                author:$('.user_name .dark').text().trim()
             });
-            var q = 0;
-            for(var i=start; i<topic_url.length; q++,i++){
-                if(q>=most) break;
-                superagent.get(topic_url[i])
+            if(count<(topic_url.length)){
+                var tmp = count;
+                superagent.get(topic_url[count])
                     .end(function(err,res){
-                        //console.log('访问：'+topic_url[i]);
-                        ep.emit('topic_html',[topic_url[i],res.text]);
+                        ep.emit('updata',[topic_url[tmp],res.text]);
                     });
+                count++;
+            }
+        });
+        function start(cnt){
+            if(cnt<5){
+                superagent.get(topic_url[cnt])
+                    .end(function(err,res){
+                        ep.emit('updata',[topic_url[cnt],res.text]);
+                    });
+                start(cnt+1);
             }
         }
-        loop(0);
-
+        start(0);
     });
